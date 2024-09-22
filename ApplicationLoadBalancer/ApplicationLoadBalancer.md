@@ -1,4 +1,4 @@
-# Creating an Application Load Balancer on AWS
+# Creating an Application Load Balancer and Auto Scaling Group on AWS
 This tutorial will guide you through the process of creating an Application Load Balancer on AWS and setting up an Auto Scaling group to ensure high availability and scalability.
 
 ## Prerequisites
