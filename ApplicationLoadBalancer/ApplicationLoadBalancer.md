@@ -95,3 +95,8 @@ Set up an Auto Scaling group to automatically adjust the number of EC2 instances
 ### 7. Verify that the instances are responding to health checks
 copy the DNS name in the my-application-load-balancer and paste in the browset to check ALB is working fine or not.
 
+### Conclusion
+Congratulations! You have successfully created an Application Load Balancer on AWS.
+
+
+### Don't forget to close/delete resources that you created while doing this Handson to avoid any additional cost.
