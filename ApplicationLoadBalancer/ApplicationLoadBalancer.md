@@ -10,10 +10,50 @@ Before you begin, make sure you have the following:
 
 ## Steps
 ### 1. Create a security group for the load balancer
-### 2. Add inbound rules to the security group
+Security group Name: my-load-balancer-security-group
+Add inbound rules to the security group
 Add HTTP - All Traffic.
 
-### 3. Create the Application Load Balancer
+### 2. Create the EC2 instances
+Launch EC2 instances with below configuration:
+- AMI: Amazon Linux 2 AMI/ 2023 AMI.
+- Instance Type: t2.micro.
+- Key Pair: Proceed without a key pair.
+- Allow HTTP and SSH traffic.
+- In Advanced details -> User data
+copy and paste below code in the user data
+```
+#!/bin/bash
+# Use this for your user data (script from top to bottom)
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+```
+
+### 3. Create a target group for the instances
+Use the AWS Management Console to create a target group for the instance and register the EC2 instances with the target group. Here are the values we'll use:
+
+- Name: my-target-group-for-ALB
+- Protocol: HTTP
+- Port: 80
+- VPC: choose your VPC
+- Health checks:
+  - Protocol: HTTP
+  - Path: /health-check
+  - Port: traffic-port
+  - Healthy threshold: 3
+  - Unhealthy threshold: 3
+  - Timeout: 5 seconds
+  - Interval: 30 seconds
+click on next
+Select EC2 instance that you create above.
+click on include as pending below.
+click on create target group.
+
+
+### 4. Create the Application Load Balancer
 Use the AWS Management Console to create the Application Load Balancer. Here are the values we'll use:
 
 - Name: my-application-load-balancer
@@ -26,40 +66,32 @@ Use the AWS Management Console to create the Application Load Balancer. Here are
 - Availability zones: choose at least two
 - Security group: my-load-balancer-security-group
 
-### 4. Create the EC2 instances
-Launch EC2 instances with the Amazon Linux 2 AMI and a t2.micro instance type.
+### 5. Create an Launch Template
+Click the “Create launch template” button. This will open the "Create launch template" page where you can specify the details for your template.
+Template Details:
+- Launch Template Name: ALB-Template-AutoScaling.
+- AMI: Amazon Linux 2 AMI/ 2023 AMI.
+- Instance Type: t2.micro.
+- Key Pair: Proceed without a key pair.
+- **Network settings**:
+  - Security Groups: Select security group which is already created for your instance or create new one that allows HHTP and SSH Traffic.
+- **Advanced Details**:
+  - **User Data** (optional): copy paste the same User data provided in the ec2 instance creation section.
+  - **IAM role**: Attach an IAM role if necessary.
 
-### 5. Create a target group for the instances
-Use the AWS Management Console to create a target group for the instances. Here are the values we'll use:
-
-- Name: my-target-group
-- Protocol: HTTP
-- Port: 80
-- VPC: choose your VPC
-- Health checks:
-  - Protocol: HTTP
-  - Path: /health-check
-  - Port: traffic-port
-  - Healthy threshold: 3
-  - Unhealthy threshold: 3
-  - Timeout: 5 seconds
-  - Interval: 30 seconds
-
-### 6. Register the EC2 instances with the target group
-Use the AWS Management Console to register the EC2 instances with the target group.
-
-### 7. Create an Auto Scaling group
+### 6. Create an Auto Scaling group
 Set up an Auto Scaling group to automatically adjust the number of EC2 instances based on the demand. Here are the values we'll use:
 
 - Name: my-auto-scaling-group
-- Launch configuration: Select the same AMI and instance type used for the EC2 instances
+- Launch Template: Select the launch Template ALB-Template-AutoScaling
 - Min size: 1
-- Max size: 10
+- Max size: 5
 - Desired capacity: 2
-- Target group: my-target-group
+- Target group: my-target-group-for-ALB
 - Health check type: ELB
-- Health check grace period: 300 seconds
+- Health check grace period: 100 seconds
 - Subnets: Select the same subnets used for the ALB
 
-### 8. Verify that the instances are responding to health checks
-SSH into an instance and run a command to test the health check endpoint:
+### 7. Verify that the instances are responding to health checks
+copy the DNS name in the my-application-load-balancer and paste in the browset to check ALB is working fine or not.
+
