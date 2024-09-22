@@ -1,54 +1,102 @@
-# AWS Application Load Balancer and Auto Scaling Setup
-
-This guide provides step-by-step instructions to set up an Application Load Balancer (ALB) and an Auto Scaling group in AWS. This setup helps to distribute incoming application traffic across multiple instances, improving the fault tolerance and scalability of your application.
+# Creating an Application Load Balancer and Auto Scaling Group on AWS
+This tutorial will guide you through the process of creating an Application Load Balancer on AWS and setting up an Auto Scaling group to ensure high availability and scalability.
 
 ## Prerequisites
+Before you begin, make sure you have the following:
 
-- An AWS account
-- AWS CLI installed and configured
-- Basic knowledge of Amazon EC2 and Amazon VPC
+- An AWS account with appropriate permissions to create a load balancer, EC2 instances, security groups, and Auto Scaling groups.
+- An Amazon Machine Image (AMI) for the EC2 instances. We will use the Amazon Linux 2 AMI (free tier eligible) with a t2.micro instance type.
+- A target group to register the EC2 instances with.
 
-## Step 1: Create a Launch Configuration
+## Steps
+### 1. Create a security group for the load balancer
+Security group Name: my-load-balancer-security-group
+Add inbound rules to the security group
+Add HTTP - All Traffic.
 
-1. Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/.
-2. Under the **Auto Scaling** section, click **Launch Configurations** then click **Create launch configuration**.
-3. Choose an Amazon Machine Image (AMI), instance type, and then choose **Next: Configure details**.
-4. Provide a name for your launch configuration and additional details such as IAM role, monitoring, and advanced settings.
-5. Add storage to your instance and click **Next: Configure Security Group**.
-6. Set up a security group that allows appropriate inbound access (typically HTTP on port 80 and HTTPS on port 443).
-7. Review your choices and click **Create launch configuration**. Use an existing key pair or create a new one, and then click **Create launch configuration**.
+### 2. Create the EC2 instances
+Launch EC2 instances with below configuration:
+- AMI: Amazon Linux 2 AMI/ 2023 AMI.
+- Instance Type: t2.micro.
+- Key Pair: Proceed without a key pair.
+- Allow HTTP and SSH traffic.
+- In Advanced details -> User data
+copy and paste below code in the user data
+```
+#!/bin/bash
+# Use this for your user data (script from top to bottom)
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+```
 
-## Step 2: Create an Auto Scaling Group
+### 3. Create a target group for the instances
+Use the AWS Management Console to create a target group for the instance and register the EC2 instances with the target group. Here are the values we'll use:
 
-1. With the launch configuration created, you are directed to the **Create Auto Scaling group** page.
-2. Name your Auto Scaling group and select your launch configuration.
-3. Define the network and subnet(s) configuration. Ensure these are in the same VPC as your ALB.
-4. Set scaling policies based on your requirements (e.g., target average CPU utilization).
-5. Configure notifications, tags, and additional settings as necessary.
-6. Review and click **Create Auto Scaling group**.
+- Name: my-target-group-for-ALB
+- Protocol: HTTP
+- Port: 80
+- VPC: choose your VPC
+- Health checks:
+  - Protocol: HTTP
+  - Path: /health-check
+  - Port: traffic-port
+  - Healthy threshold: 3
+  - Unhealthy threshold: 3
+  - Timeout: 5 seconds
+  - Interval: 30 seconds
+click on next
+Select EC2 instance that you create above.
+click on include as pending below.
+click on create target group.
 
-## Step 3: Create an Application Load Balancer
 
-1. Navigate to the EC2 Dashboard and under **Load Balancing**, click **Load Balancers** and then **Create Load Balancer**.
-2. Choose **Application Load Balancer**, set the name, and the network and subnet configuration. Ensure these settings match those of your Auto Scaling group.
-3. Configure the security settings and the routing options. Typically, you'll set a listener for HTTP (port 80) that forwards requests to a target group.
-4. Define your target group with health checks based on the protocol and path that your application responds to.
-5. Review and create the ALB.
+### 4. Create the Application Load Balancer
+Use the AWS Management Console to create the Application Load Balancer. Here are the values we'll use:
 
-## Step 4: Connect the Auto Scaling Group to the ALB
+- Name: my-application-load-balancer
+- Scheme: internet-facing
+- IP address type: ipv4
+- Listeners:
+  - Protocol: HTTP
+  - Port: 80
+  - Default action: Forward to target group
+- Availability zones: choose at least two
+- Security group: my-load-balancer-security-group
 
-1. Go to the Auto Scaling Groups page, select your created group, and go to the **Details** tab.
-2. Scroll down to **Load balancing**, click **Edit**, and add your ALB.
-3. Associate the target group you defined in your ALB setup with your Auto Scaling group.
+### 5. Create an Launch Template
+Click the “Create launch template” button. This will open the "Create launch template" page where you can specify the details for your template.
+Template Details:
+- Launch Template Name: ALB-Template-AutoScaling.
+- AMI: Amazon Linux 2 AMI/ 2023 AMI.
+- Instance Type: t2.micro.
+- Key Pair: Proceed without a key pair.
+- **Network settings**:
+  - Security Groups: Select security group which is already created for your instance or create new one that allows HHTP and SSH Traffic.
+- **Advanced Details**:
+  - **User Data** (optional): copy paste the same User data provided in the ec2 instance creation section.
+  - **IAM role**: Attach an IAM role if necessary.
 
-## Step 5: Test Your Setup
+### 6. Create an Auto Scaling group
+Set up an Auto Scaling group to automatically adjust the number of EC2 instances based on the demand. Here are the values we'll use:
 
-1. Access the DNS name provided by your ALB in a web browser.
-2. Monitor the behavior of your application through the AWS Management Console to ensure traffic is distributed across instances as expected.
+- Name: my-auto-scaling-group
+- Launch Template: Select the launch Template ALB-Template-AutoScaling
+- Min size: 1
+- Max size: 5
+- Desired capacity: 2
+- Target group: my-target-group-for-ALB
+- Health check type: ELB
+- Health check grace period: 100 seconds
+- Subnets: Select the same subnets used for the ALB
 
-## Conclusion
+### 7. Verify that the instances are responding to health checks
+copy the DNS name in the my-application-load-balancer and paste in the browset to check ALB is working fine or not.
 
-You have now successfully set up an Application Load Balancer and an Auto Scaling group in AWS. This configuration will help manage the load and scale the performance of your application based on demand.
+### Conclusion
+Congratulations! You have successfully created an Application Load Balancer on AWS.
 
-For more information, visit the official AWS documentation: https://aws.amazon.com/documentation/.
 
+### Don't forget to delete resources that you created while doing this Handson to avoid any additional cost. :)
