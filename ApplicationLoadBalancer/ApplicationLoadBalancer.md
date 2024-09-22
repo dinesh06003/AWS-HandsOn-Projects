@@ -99,4 +99,4 @@ copy the DNS name in the my-application-load-balancer and paste in the browset t
 Congratulations! You have successfully created an Application Load Balancer on AWS.
 
 
-### Don't forget to close/delete resources that you created while doing this Handson to avoid any additional cost.
+### Don't forget to close/delete resources that you created while doing this Handson to avoid any additional cost. :)
